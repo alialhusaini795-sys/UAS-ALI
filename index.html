@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LiMusic - Ali Husaini</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #444; border-radius: 10px; }
+        .song-card:hover { background: #2a2a2a; }
+        .plus-btn:active { transform: scale(0.85); transition: transform 0.1s; }
+        .view { display: none; }
+        .view.active { display: block; }
+    </style>
+</head>
+<body class="bg-black text-white font-sans h-screen flex flex-col overflow-hidden">
+
+    <!-- Header -->
+    <header class="h-16 flex items-center justify-between px-6 bg-black border-b border-gray-800">
+        <h1 class="text-2xl font-bold text-green-500 cursor-pointer" onclick="showView('home')">LiMusic</h1>
+        <div class="flex-1 mx-10">
+            <input type="text" id="searchBar" placeholder="Cari ID Lagu (BST)..." class="w-full bg-gray-800 p-2 rounded-full px-4 outline-none border border-gray-700 focus:border-green-500">
+        </div>
+        <div class="flex items-center gap-4">
+            <button onclick="sortSongs()" class="text-sm bg-gray-700 hover:bg-gray-600 px-3 py-1 rounded">Urutkan A-Z</button>
+            <div class="bg-green-800 px-3 py-1 rounded-full font-bold">AH</div>
+            <span>Ali Husaini</span>
+        </div>
+    </header>
+
+    <main class="flex flex-1 overflow-hidden">
+        <!-- Sidebar -->
+        <aside class="w-64 p-4 border-r border-gray-800 flex flex-col gap-4">
+            <nav class="space-y-2">
+                <button onclick="showView('home')" class="block w-full text-left hover:text-green-500">🏠 Beranda</button>
+                <button onclick="showView('queue')" class="block w-full text-left hover:text-green-500">📋 Antrean Putar</button>
+                <button onclick="showView('liked')" class="block w-full text-left hover:text-green-500">❤️ Lagu Disukai</button>
+            </nav>
+            <div class="mt-4 border-t border-gray-800 pt-4">
+                <h3 class="text-sm font-bold text-gray-400 mb-2">Rekomendasi Artis</h3>
+                <div id="graphOutput" class="text-xs text-gray-300">Pilih lagu...</div>
+            </div>
+        </aside>
+
+        <section class="flex-1 overflow-y-auto p-6 custom-scrollbar">
+            <div id="homeView" class="view active">
+                <h2 class="text-xl font-bold mb-4">Beranda</h2>
+                <div id="songList" class="space-y-2"></div>
+            </div>
+            <div id="queueView" class="view">
+                <h2 class="text-xl font-bold mb-4">Antrean Putar</h2>
+                <div id="queueListPage" class="space-y-2"></div>
+            </div>
+            <div id="likedView" class="view">
+                <h2 class="text-xl font-bold mb-4">Lagu Disukai</h2>
+                <div id="likedList" class="space-y-2"></div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Player -->
+    <footer class="h-28 bg-gray-900 border-t border-gray-800 flex flex-col justify-center px-6 gap-2">
+        <div class="flex items-center justify-between">
+            <div id="nowPlaying" class="w-64">
+                <div class="font-bold text-sm">Pilih lagu</div>
+                <div class="text-xs text-gray-400">-</div>
+            </div>
+            <div class="flex items-center gap-4">
+                <button onclick="prevSong()" class="text-2xl hover:text-green-500">⏮</button>
+                <button id="mainPlayBtn" onclick="togglePlay()" class="text-4xl text-green-500">▶️</button>
+                <button onclick="nextSong()" class="text-2xl hover:text-green-500">⏭</button>
+            </div>
+            <div class="w-64"></div>
+        </div>
+        <div class="w-full h-1 bg-gray-700 rounded-full overflow-hidden">
+            <div id="progressBar" class="h-full bg-green-500 w-0 transition-all duration-100 ease-linear"></div>
+        </div>
+    </footer>
+
+    <script>
+        const songs = [
+            {id: 80, title: "Hati-Hati di Jalan", artist: "Tulus", genre: "Pop"},
+            {id: 25, title: "Apuse", artist: "Raisa", genre: "Pop"},
+            {id: 12, title: "Teman Hidup", artist: "Tulus", genre: "Pop"},
+            {id: 99, title: "Lathi", artist: "Weird Genius", genre: "EDM"},
+            {id: 5, title: "Akad", artist: "Payung Teduh", genre: "Indie"},
+            {id: 45, title: "Manusia Kuat", artist: "Tulus", genre: "Pop"},
+            {id: 33, title: "Kali Kedua", artist: "Raisa", genre: "Pop"},
+            {id: 67, title: "Kisah Romantis", artist: "Glenn Fredly", genre: "Soul"},
+            {id: 10, title: "Surat Cinta untuk Starla", artist: "Virgoun", genre: "Pop"},
+            {id: 55, title: "Monokrom", artist: "Tulus", genre: "Pop"},
+            {id: 21, title: "Could It Be", artist: "Raisa", genre: "Pop"},
+            {id: 88, title: "Teristimewa", artist: "Andmesh", genre: "Pop"},
+            {id: 7, title: "Pesan Terakhir", artist: "Lyodra", genre: "Pop"},
+            {id: 40, title: "Menghapus Jejakmu", artist: "Noah", genre: "Rock"},
+            {id: 15, title: "Bungaku", artist: "Afgan", genre: "Soul"},
+            {id: 72, title: "Sadis", artist: "Afgan", genre: "Soul"},
+            {id: 50, title: "Jatuh Suka", artist: "Tulus", genre: "Pop"},
+            {id: 3, title: "Anganku Anganmu", artist: "Raisa", genre: "Pop"},
+            {id: 60, title: "Kapan", artist: "Afgan", genre: "Soul"},
+            {id: 11, title: "Dewi", artist: "Dewa 19", genre: "Rock"}
+        ];
+
+        let queue = [];
+        let likedSongs = [];
+        let currentIndex = 0;
+        let isPlaying = false;
+        let timer = null;
+        let progressInterval = null;
+
+        const artistGraph = { "Tulus": ["Raisa", "Afgan"], "Raisa": ["Tulus"], "Afgan": ["Tulus"] };
+
+        function stopPlayback() {
+            isPlaying = false;
+            document.getElementById('mainPlayBtn').innerText = "▶️";
+            clearTimeout(timer);
+            clearInterval(progressInterval);
+        }
+
+        function showView(viewId) {
+            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+            document.getElementById(viewId + 'View').classList.add('active');
+            if (viewId === 'queue') renderQueuePage();
+            if (viewId === 'liked') renderLikedPage();
+        }
+
+        function playSong(index) {
+            currentIndex = index;
+            const song = songs[currentIndex];
+            document.getElementById('nowPlaying').innerHTML = `<div class="font-bold text-sm">${song.title}</div><div class="text-xs text-gray-400">${song.artist}</div>`;
+            document.getElementById('graphOutput').innerText = `Rekomendasi: ${(artistGraph[song.artist] || ["Tidak ada"]).join(", ")}`;
+            
+            isPlaying = true;
+            document.getElementById('mainPlayBtn').innerText = "⏸";
+            startProgress();
+        }
+
+        function startProgress() {
+            clearTimeout(timer);
+            clearInterval(progressInterval);
+            let width = 0;
+            const bar = document.getElementById('progressBar');
+            bar.style.width = "0%";
+            
+            timer = setTimeout(nextSong, 10000);
+            progressInterval = setInterval(() => {
+                width += 1;
+                bar.style.width = width + "%";
+                if (width >= 100) clearInterval(progressInterval);
+            }, 100);
+        }
+
+        function togglePlay() {
+            if (isPlaying) {
+                stopPlayback();
+            } else {
+                playSong(currentIndex);
+            }
+        }
+
+        function nextSong() {
+            if (queue.length > 0) {
+                const nextId = queue.shift();
+                const nextSong = songs.find(s => s.id === nextId);
+                currentIndex = songs.indexOf(nextSong);
+            } else {
+                currentIndex = (currentIndex + 1) % songs.length;
+            }
+            playSong(currentIndex);
+            renderQueuePage();
+        }
+
+        function prevSong() {
+            currentIndex = (currentIndex - 1 + songs.length) % songs.length;
+            playSong(currentIndex);
+        }
+
+        function addToQueue(id) {
+            queue.push(id);
+            alert("Lagu ditambahkan ke antrean!");
+        }
+
+        function toggleLike(id) {
+            const index = likedSongs.indexOf(id);
+            if (index > -1) likedSongs.splice(index, 1);
+            else likedSongs.push(id);
+            renderSongs();
+            renderLikedPage();
+        }
+
+        function renderSongs(list = songs, containerId = 'songList') {
+            const container = document.getElementById(containerId);
+            container.innerHTML = list.map((s) => `
+                <div class="song-card flex items-center p-2 rounded cursor-pointer group">
+                    <span class="w-10">🎵</span>
+                    <div class="flex-1" onclick="playSongById(${s.id})">
+                        <div class="font-bold">${s.title}</div>
+                        <div class="text-xs text-gray-400">${s.artist} (ID: ${s.id})</div>
+                    </div>
+                    <button onclick="addToQueue(${s.id})" class="plus-btn mx-4 text-green-500 font-bold">+</button>
+                    <button id="likeBtn-${s.id}" onclick="toggleLike(${s.id})" class="text-xl ${likedSongs.includes(s.id) ? 'text-red-500' : 'text-white'}">❤️</button>
+                </div>
+            `).join('');
+        }
+
+        function playSongById(id) {
+            const index = songs.findIndex(s => s.id === id);
+            playSong(index);
+        }
+
+        function renderQueuePage() {
+            const container = document.getElementById('queueListPage');
+            if(queue.length === 0) container.innerHTML = "<p class='text-gray-500'>Antrean kosong.</p>";
+            else container.innerHTML = queue.map(id => {
+                const s = songs.find(x => x.id === id);
+                return `<div class="p-2 border-b border-gray-800 text-sm">🎵 ${s.title}</div>`;
+            }).join('');
+        }
+
+        function renderLikedPage() {
+            const likedList = songs.filter(s => likedSongs.includes(s.id));
+            renderSongs(likedList, 'likedList');
+        }
+
+        function sortSongs() {
+            songs.sort((a, b) => a.title.localeCompare(b.title));
+            renderSongs();
+        }
+
+        document.getElementById('searchBar').addEventListener('input', (e) => {
+            const id = parseInt(e.target.value);
+            if (!id) return renderSongs();
+            const found = songs.find(s => s.id === id);
+            if (found) renderSongs([found]);
+        });
+
+        renderSongs();
+    </script>
+</body>
+</html>
